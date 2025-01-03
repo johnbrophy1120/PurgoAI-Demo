@@ -70,9 +70,9 @@ f_events_df = all_events_df.select(
     first("session_number").over(Window.partitionBy("user_pseudo_id")).alias("session_number"),
     col("device.web_info.browser").alias("device_browser"),
     col("device.category").alias("device_category"),
-    col("geo.city").alias("city"),
-    col("geo.country").alias("country"),
-    col("geo.region").alias("region"),
+    col("geo.city"),
+    col("geo.country"),
+    col("geo.region"),
     first("page_title").over(Window.partitionBy("user_pseudo_id")).alias("page_title"),
     first("adcontent").over(Window.partitionBy("user_pseudo_id")).alias("adcontent"),
     first("campaign").over(Window.partitionBy("user_pseudo_id")).alias("campaign"),
@@ -90,11 +90,11 @@ f_events_df = all_events_df.select(
     col("engagement_time")
 )
 
-# Load existing data from f_events
-existing_f_events_df = spark.table("purgo_poc.f_events")
+# Load existing f_events table
+f_events_existing_df = spark.table("purgo_poc.f_events")
 
 # Find missing rows
-missing_rows_df = f_events_df.join(existing_f_events_df, on=["date", "event_name", "event_ts"], how="left_anti")
+missing_rows_df = f_events_df.join(f_events_existing_df, on=["date", "event_name", "event_ts"], how="left_anti")
 
-# Write missing rows to f_events
+# Write missing rows to f_events table
 missing_rows_df.write.insertInto("purgo_poc.f_events", overwrite=False)
