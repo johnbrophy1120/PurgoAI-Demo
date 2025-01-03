@@ -1,8 +1,8 @@
 # Databricks notebook source
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, from_unixtime, sum as spark_sum, when, first
-from pyspark.sql.types import StructType, StructField, StringType, IntegerType, LongType, TimestampType
 from pyspark.sql.window import Window
+from pyspark.sql.types import StructType, StructField, StringType, IntegerType, LongType, TimestampType, ArrayType
 
 # Initialize Spark session
 spark = SparkSession.builder.appName("PopulateFEvents").getOrCreate()
@@ -14,13 +14,13 @@ schema = StructType([
     StructField("event_timestamp", LongType(), True),
     StructField("user_pseudo_id", StringType(), True),
     StructField("event_bundle_sequence_id", IntegerType(), True),
-    StructField("event_params", StructType([
+    StructField("event_params", ArrayType(StructType([
         StructField("key", StringType(), True),
         StructField("value", StructType([
             StructField("int_value", IntegerType(), True),
             StructField("string_value", StringType(), True)
         ]), True)
-    ]), True),
+    ])), True),
     StructField("device", StructType([
         StructField("web_info", StructType([
             StructField("browser", StringType(), True)
@@ -39,7 +39,7 @@ schema = StructType([
 ])
 
 # Load data from purgo_poc.all_events
-all_events_df = spark.read.format("delta").schema(schema).load("/path/to/purgo_poc/all_events")
+all_events_df = spark.read.schema(schema).table("purgo_poc.all_events")
 
 # Transform event_timestamp from unixtime to datetime
 all_events_df = all_events_df.withColumn("event_ts", from_unixtime(col("event_timestamp")).cast(TimestampType()))
@@ -70,9 +70,9 @@ f_events_df = all_events_df.select(
     first("session_number").over(Window.partitionBy("user_pseudo_id")).alias("session_number"),
     col("device.web_info.browser").alias("device_browser"),
     col("device.category").alias("device_category"),
-    col("geo.city"),
-    col("geo.country"),
-    col("geo.region"),
+    col("geo.city").alias("city"),
+    col("geo.country").alias("country"),
+    col("geo.region").alias("region"),
     first("page_title").over(Window.partitionBy("user_pseudo_id")).alias("page_title"),
     first("adcontent").over(Window.partitionBy("user_pseudo_id")).alias("adcontent"),
     first("campaign").over(Window.partitionBy("user_pseudo_id")).alias("campaign"),
@@ -90,11 +90,11 @@ f_events_df = all_events_df.select(
     col("engagement_time")
 )
 
-# Load existing f_events data
-f_events_existing_df = spark.read.format("delta").load("/path/to/purgo_poc/f_events")
+# Load existing f_events table
+f_events_existing_df = spark.table("purgo_poc.f_events")
 
 # Identify missing rows
-missing_rows_df = f_events_df.join(f_events_existing_df, ["date", "event_name", "event_ts"], "left_anti")
+missing_rows_df = f_events_df.join(f_events_existing_df, on=["date", "event_name", "event_ts"], how="left_anti")
 
-# Write missing rows to f_events
-missing_rows_df.write.format("delta").mode("append").save("/path/to/purgo_poc/f_events")
+# Insert missing rows into f_events table
+missing_rows_df.write.insertInto("purgo_poc.f_events", overwrite=False)
