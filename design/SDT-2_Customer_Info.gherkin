@@ -1,0 +1,22 @@
+Feature: Create table definition based on customer_info.csv
+
+  Scenario: Define table structure from customer_info.csv
+    Given the customer_info.csv file is available
+    When I examine the structure of customer_info.csv
+    Then I should identify the columns and data types
+    And I should define the table schema based on the identified structure
+
+  Scenario: Clarify relationships with existing tables
+    Given the existing tables f_item, f_order, and f_sales
+    When I analyze the relationship between customer_info.csv and existing tables
+    Then I should determine any necessary data relationships or integrations
+
+  Scenario: Establish data quality and validation rules
+    Given the need for data quality and validation
+    When I define the table schema for customer_info.csv
+    Then I should establish clear data quality and validation rules
+
+  Scenario: Document business logic and derived fields
+    Given the requirement for business logic and derived fields
+    When I create the table definition for customer_info.csv
+    Then I should document any specific business logic or derived fields needed
